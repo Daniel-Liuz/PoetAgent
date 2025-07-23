@@ -1,0 +1,19 @@
+<!-- E:\Program\poetry_project\core\templates\core\login.html -->
+{% extends 'core/base_auth.html' %}
+
+{% block title %}登录{% endblock %}
+
+{% block content %}
+    <h2>登录</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">登录</button>
+    </form>
+    <p class="switch-link">
+        还没有账号？ <a href="{% url 'signup' %}">点击注册</a>
+    </p>
+    <p class="switch-link" style="margin-top: 10px;">
+        <a href="{% url 'password_reset' %}">忘记密码？</a>
+    </p>
+{% endblock %}

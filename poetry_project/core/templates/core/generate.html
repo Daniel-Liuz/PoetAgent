@@ -1,0 +1,216 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>诗歌生成</title>
+    <style>
+        body {
+            background-image: url('{% static "core/images/background1.png" %}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Microsoft YaHei', 'SimSun', sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .content-container {
+            width: 80%;
+            max-width: 700px;
+            background-color: rgba(255, 255, 255, 0.85);
+            padding: 30px 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        h1 { color: #333; }
+
+        /* --- 需求1：Flexbox 布局修复 --- */
+        .user-info {
+            display: flex; /* 启用Flexbox */
+            justify-content: center; /* 水平居中 */
+            align-items: center; /* 垂直居中 */
+            gap: 15px; /* 设置元素之间的间距 */
+            margin-bottom: 25px;
+            font-size: 1.1em;
+        }
+        .user-info a { color: #007bff; text-decoration: none; }
+        .user-info a:hover { text-decoration: underline; }
+        .user-info form { display: inline; margin: 0; padding: 0; }
+        .logout-button { background: none; border: none; color: #007bff; padding: 0; font: inherit; cursor: pointer; text-decoration: none; }
+        .logout-button:hover { text-decoration: underline; }
+
+        /* 表单样式 */
+        .form-group { margin-bottom: 15px; }
+        label { font-size: 1.1em; color: #555; margin-right: 10px; }
+        select, input[type="text"] { padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 1em; width: 60%; max-width: 250px; }
+        form#poem-form button[type="submit"] { background-color: #28a745; color: white; padding: 12px 30px; border: none; border-radius: 5px; font-size: 1.2em; cursor: pointer; transition: background-color 0.3s; margin-top: 10px; }
+        form#poem-form button[type="submit"]:hover { background-color: #218838; }
+        #loading { margin-top: 20px; font-style: italic; color: #666; }
+
+        /* --- 需求2：结果和编辑区域样式 --- */
+        #result-container {
+            margin-top: 20px;
+            text-align: left;
+        }
+        #editable-poem {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 1px dashed #ccc;
+            border-radius: 5px;
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: #333;
+            box-sizing: border-box; /* 让padding和border不增加宽度 */
+        }
+        #save-poem-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 25px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-top: 15px;
+            float: right; /* 按钮靠右 */
+        }
+        #save-poem-btn:hover { background-color: #0056b3; }
+        #save-poem-btn:disabled { background-color: #ccc; cursor: not-allowed; }
+
+    </style>
+</head>
+<body>
+
+    <div class="content-container">
+        <h1>AI 诗歌生成器</h1>
+        <!-- 需求1：将P标签改为DIV，以应用Flexbox -->
+        <div class="user-info">
+            <span>欢迎, {{ user.username }}!</span>
+            <span>|</span>
+            <a href="{% url 'my_poems' %}">我的作品</a>
+            <span>|</span>
+            <form action="{% url 'logout' %}" method="post">
+                {% csrf_token %}
+                <button type="submit" class="logout-button">登出</button>
+            </form>
+        </div>
+
+        <form id="poem-form">
+            {% csrf_token %}
+            <!-- 输入表单部分保持不变 -->
+            <div class="form-group">
+                <label for="keyword">关键词:</label>
+                <input type="text" id="keyword" required placeholder="例如：月下、长安">
+            </div>
+            <div class="form-group"><label for="length">诗歌长度:</label><select id="length"><option value="7">七言</option><option value="5">五言</option></select></div>
+            <div class="form-group"><label for="factor1">生活经历:</label><select id="factor1"><option value="-1">让AI决定</option><option value="0">军事生涯</option><option value="1">田园生活</option><option value="2">其他</option></select></div>
+            <div class="form-group"><label for="factor2">历史背景:</label><select id="factor2"><option value="-1">让AI决定</option><option value="0">盛世</option><option value="1">乱世</option></select></div>
+            <button type="submit">生成诗歌</button>
+        </form>
+
+        <div id="loading" style="display:none;">正在引经据典，挥毫泼墨，请稍候...</div>
+
+        <!-- 需求2：全新的结果/编辑区域，默认隐藏 -->
+        <div id="result-container" style="display:none;">
+            <h3>创作结果 (可编辑):</h3>
+            <textarea id="editable-poem"></textarea>
+            <button id="save-poem-btn">保存到我的作品</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 需求2：全新的JS逻辑 ---
+        const poemForm = document.getElementById('poem-form');
+        const loadingDiv = document.getElementById('loading');
+        const resultContainer = document.getElementById('result-container');
+        const editablePoem = document.getElementById('editable-poem');
+        const saveBtn = document.getElementById('save-poem-btn');
+
+        let originalKeyword = ''; // 用于生成标题
+
+        // 1. 监听“生成诗歌”表单的提交事件
+        poemForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // 获取输入值
+            const length = document.getElementById('length').value;
+            const factor1 = document.getElementById('factor1').value;
+            const factor2 = document.getElementById('factor2').value;
+            originalKeyword = document.getElementById('keyword').value; // 保存关键词
+            const inputText = `${length}${factor1}${factor2}${originalKeyword}`;
+            const csrftoken = poemForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            // 显示加载提示，隐藏旧结果
+            loadingDiv.style.display = 'block';
+            resultContainer.style.display = 'none';
+            saveBtn.disabled = false; // 重置保存按钮状态
+            saveBtn.textContent = '保存到我的作品';
+
+            // 发起生成请求
+            fetch("{% url 'generate' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify({ 'inputText': inputText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingDiv.style.display = 'none';
+                if (data.status === 'success') {
+                    editablePoem.value = data.poem; // 将结果填入可编辑的textarea
+                    resultContainer.style.display = 'block'; // 显示结果区域
+                } else {
+                    alert('错误: ' + data.message);
+                }
+            })
+            .catch(error => {
+                loadingDiv.style.display = 'none';
+                alert('请求失败: ' + error);
+            });
+        });
+
+        // 2. 监听“保存”按钮的点击事件
+        saveBtn.addEventListener('click', function() {
+            const poemContent = editablePoem.value;
+            if (!poemContent.trim()) {
+                alert('诗歌内容不能为空！');
+                return;
+            }
+
+            const poemTitle = `AI创作：关于“${originalKeyword}”`;
+            const csrftoken = poemForm.querySelector('[name=csrfmiddlewaretoken]').value;
+
+            saveBtn.disabled = true;
+            saveBtn.textContent = '保存中...';
+
+            // 发起保存请求到新的URL
+            fetch("{% url 'save_poem' %}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                body: JSON.stringify({ title: poemTitle, content: poemContent })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert(data.message);
+                    saveBtn.textContent = '已保存';
+                } else {
+                    alert('保存失败: ' + data.message);
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = '保存到我的作品';
+                }
+            })
+            .catch(error => {
+                alert('请求失败: ' + error);
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存到我的作品';
+            });
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,125 @@
+<!-- E:\Program\poetry_project\core\templates\core\base_auth.html -->
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}认证{% endblock %} - 诗语画韵</title>
+    <style>
+        body {
+            background-image: url('{% static "core/images/background3.png" %}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Microsoft YaHei', 'SimSun', sans-serif;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 顶部导航样式 (无变化) */
+        .top-nav {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px 20px;
+            border-radius: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            /* 使用 Flexbox 确保内部元素对齐 */
+            display: flex;
+            align-items: center;
+            gap: 10px; /* 控制元素间距 */
+        }
+        .top-nav a {
+            color: white;
+            text-decoration: none;
+            font-size: 1.1em;
+            transition: color 0.3s;
+        }
+        .top-nav a:hover {
+            color: #ffc107;
+        }
+        .top-nav span { /* 用于分隔符 | 的样式 */
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* --- 这是关键的修复：登出表单和按钮的样式 --- */
+        .logout-form {
+            display: inline; /* 让表单不破坏布局 */
+            margin: 0;
+            padding: 0;
+        }
+        .logout-button {
+            background: none; /* 去掉背景 */
+            border: none; /* 去掉边框 */
+            padding: 0; /* 去掉内边距 */
+            color: white; /* 文本颜色和链接一致 */
+            font-family: inherit; /* 继承字体 */
+            font-size: 1.1em; /* 字体大小和链接一致 */
+            cursor: pointer; /* 显示小手指针 */
+            transition: color 0.3s; /* 过渡效果和链接一致 */
+        }
+        .logout-button:hover {
+            color: #ffc107; /* 悬停颜色和链接一致 */
+            text-decoration: underline; /* 添加下划线，更像一个可点击项 */
+        }
+        /* --- 修复结束 --- */
+
+
+        /* 认证容器样式 (无变化) */
+        .auth-container {
+            width: 90%;
+            max-width: 400px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .auth-container h1 {
+            font-family: 'Kaiti', 'SimSun', sans-serif; /* 使用更有艺术感的字体 */
+            font-size: 2.8em;
+            color: #2c3e50; /* 一种深邃的蓝灰色 */
+            margin: 0 0 10px 0;
+            font-weight: bold;
+        }
+        .auth-container h2 { color: #333; margin-bottom: 25px; }
+        .auth-container form p { text-align: left; color: #555; }
+        .auth-container input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        .auth-container button { width: 100%; background-color: #007bff; color: white; padding: 12px 0; border: none; border-radius: 5px; font-size: 1.1em; cursor: pointer; transition: background-color 0.3s; margin-top: 10px; }
+        .auth-container button:hover { background-color: #0056b3; }
+        .auth-container .switch-link { margin-top: 20px; color: #555; }
+        .auth-container .switch-link a { color: #007bff; text-decoration: none; }
+        .auth-container .switch-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <nav class="top-nav">
+        {% if user.is_authenticated %}
+            <!-- 如果已登录，提供返回论坛和登出的功能 -->
+            <a href="{% url 'forum_list' %}">前往论坛</a>
+
+            <span>|</span>
+
+            <!-- 关键修复：将登出链接替换为表单 -->
+            <form action="{% url 'logout' %}" method="post" class="logout-form">
+                {% csrf_token %}
+                <button type="submit" class="logout-button">登出</button>
+            </form>
+
+        {% else %}
+            <!-- 如果未登录，提供一个浏览论坛的链接 -->
+            <a href="{% url 'forum_list' %}">浏览论坛</a>
+        {% endif %}
+    </nav>
+
+    <div class="auth-container">
+        <h1>诗语画韵</h1>
+        {% block content %}{% endblock %}
+    </div>
+
+</body>
+</html>

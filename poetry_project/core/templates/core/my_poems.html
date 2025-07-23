@@ -1,0 +1,252 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>我的作品集</title>
+    <style>
+        body {
+            background-image: url('{% static "core/images/background2.png" %}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Kaiti', 'SimSun', sans-serif;
+            margin: 0;
+            padding: 20px 0; /* 上下留白 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .header h1 { margin: 0; font-size: 2.5em; }
+        .header p a { color: #ffc107; text-decoration: none; font-size: 1.2em; margin: 0 10px; }
+
+        .carousel-container {
+            width: 90%;
+            max-width: 700px;
+            height: 450px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .poem-card {
+            width: 80%;
+            max-width: 500px;
+            height: 400px;
+            position: absolute;
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.98), rgba(245, 245, 245, 0.9));
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            padding: 20px 30px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            transition: transform 0.6s ease, opacity 0.6s ease;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .poem-card.current { opacity: 1; transform: translateX(0) scale(1); z-index: 10; }
+        .poem-card.prev { opacity: 0.6; transform: translateX(-60%) scale(0.8); z-index: 5; }
+        .poem-card.next { opacity: 0.6; transform: translateX(60%) scale(0.8); z-index: 5; }
+
+        .poem-card h3 { font-size: 1.8em; margin: 10px 0 15px 0; color: #333; }
+        .poem-card pre {
+            font-family: 'Kaiti', 'SimSun', sans-serif;
+            font-size: 1.4em;
+            line-height: 2;
+            white-space: pre-wrap;
+            color: #444;
+            flex-grow: 1;
+            overflow-y: auto;
+            width: 100%;
+        }
+        .poem-card small { color: #777; font-size: 0.9em; }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 25px;
+        }
+
+        /* === 修改：为所有按钮应用通用样式 === */
+        .control-btn, .publish-btn, .delete-btn {
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: 2px solid white;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+            font-family: 'Kaiti', 'SimSun', sans-serif;
+        }
+        .control-btn { border-radius: 50%; width: 50px; height: 50px; font-size: 1.5em; font-weight: bold; margin: 0 20px; }
+        .publish-btn, .delete-btn { padding: 10px 20px; border-radius: 25px; font-size: 1.1em; margin: 0 10px; }
+
+        .control-btn:hover, .publish-btn:hover, .delete-btn:hover { background-color: white; color: black; }
+
+        .publish-btn.published { background-color: #28a745; border-color: #28a745; }
+        .publish-btn.published:hover { background-color: #218838; border-color: #218838; color: white; }
+
+        /* --- 新增：删除按钮的专属样式 --- */
+        .delete-btn {
+            background-color: #dc3545; /* 红色背景 */
+            border-color: #dc3545;
+        }
+        .delete-btn:hover {
+            background-color: #c82333; /* 深红色悬停效果 */
+            border-color: #c82333;
+            color: white;
+        }
+
+        .no-poems { color: white; font-size: 1.5em; background-color: rgba(0,0,0,0.5); padding: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>我的作品集</h1>
+        <p> <a href="{% url 'generate' %}">返回创作</a> | <a href="{% url 'forum_list' %}">前往论坛</a> </p>
+    </div>
+
+    {% if poems %}
+        <div class="carousel-container">
+            {% for poem in poems %}
+                <!-- === 修复：使用 forloop.first 让第一张卡片天生可见 === -->
+                <div class="poem-card {% if forloop.first %}current{% endif %}" data-poem-id="{{ poem.id }}" data-is-published="{% if poem.forum_post %}true{% else %}false{% endif %}" data-post-url="{% if poem.forum_post %}{% url 'forum_post_detail' poem.forum_post.id %}{% endif %}">
+                    <h3>{{ poem.title }}</h3>
+                    <pre>{{ poem.content }}</pre>
+                    <small>创作于: {{ poem.created_at|date:"Y-m-d H:i" }}</small>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="controls">
+            <button class="control-btn" id="prev-btn">‹</button>
+            <button id="publish-btn" class="publish-btn">发布到论坛</button>
+            <!-- --- 新增：删除按钮 --- -->
+            <button id="delete-btn" class="delete-btn">删除作品</button>
+            <button class="control-btn" id="next-btn">›</button>
+        </div>
+    {% else %}
+        <p class="no-poems">你还没有创作任何诗歌。</p>
+    {% endif %}
+
+    <script>
+    {% if poems %}
+        const cards = document.querySelectorAll('.poem-card');
+        const prevBtn = document.getElementById('prev-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const publishBtn = document.getElementById('publish-btn');
+        const deleteBtn = document.getElementById('delete-btn'); // 获取删除按钮
+        const carouselContainer = document.querySelector('.carousel-container');
+
+        let currentIndex = 0;
+        const csrftoken = '{{ csrf_token }}';
+        let autoPlayInterval = null;
+
+        function updateUI() {
+            if (cards.length === 0) return; // 如果没有卡片了（例如删除了最后一张），直接退出
+
+            // 1. 更新轮播卡片位置和样式
+            cards.forEach((card, index) => {
+                card.classList.remove('current', 'prev', 'next');
+                if (cards.length > 1) {
+                    let newIndex = (index - currentIndex + cards.length) % cards.length;
+                    if (newIndex === 0) card.classList.add('current');
+                    else if (newIndex === 1) card.classList.add('next');
+                    else if (newIndex === cards.length - 1) card.classList.add('prev');
+                } else {
+                    card.classList.add('current');
+                }
+            });
+
+            // 2. 更新发布和删除按钮的状态
+            const currentCard = cards[currentIndex];
+            const isPublished = currentCard.dataset.isPublished === 'true';
+
+            if (isPublished) {
+                publishBtn.textContent = '查看帖子';
+                publishBtn.classList.add('published');
+                publishBtn.dataset.action = 'view';
+                publishBtn.dataset.url = currentCard.dataset.postUrl;
+            } else {
+                publishBtn.textContent = '发布到论坛';
+                publishBtn.classList.remove('published');
+                publishBtn.dataset.action = 'publish';
+            }
+            deleteBtn.dataset.poemId = currentCard.dataset.poemId;
+        }
+
+        function handleNext() { currentIndex = (currentIndex + 1) % cards.length; updateUI(); }
+        function handlePrev() { currentIndex = (currentIndex - 1 + cards.length) % cards.length; updateUI(); }
+        function startAutoPlay() { if (autoPlayInterval) clearInterval(autoPlayInterval); autoPlayInterval = setInterval(handleNext, 5000); }
+        function stopAutoPlay() { clearInterval(autoPlayInterval); }
+
+        // --- 事件监听 ---
+        publishBtn.addEventListener('click', function() {
+            const action = this.dataset.action;
+            if (action === 'view') {
+                window.location.href = this.dataset.url;
+            } else if (action === 'publish') {
+                const poemId = cards[currentIndex].dataset.poemId;
+                const form = document.createElement('form');
+                form.method = 'POST'; form.action = `/poem/${poemId}/publish/`;
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden'; csrfInput.name = 'csrfmiddlewaretoken'; csrfInput.value = csrftoken;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+
+        // --- 新增：删除按钮的事件监听 ---
+        deleteBtn.addEventListener('click', function() {
+            if (confirm('确定要永久删除这首诗吗？此操作无法撤销。')) {
+                const poemId = this.dataset.poemId;
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/poem/${poemId}/delete/`; // 指向新的删除URL
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden'; csrfInput.name = 'csrfmiddlewaretoken'; csrfInput.value = csrftoken;
+                form.appendChild(csrfInput);
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+
+        // --- 控制逻辑和初始启动 ---
+        if (cards.length > 1) {
+            nextBtn.addEventListener('click', () => { handleNext(); stopAutoPlay(); startAutoPlay(); });
+            prevBtn.addEventListener('click', () => { handlePrev(); stopAutoPlay(); startAutoPlay(); });
+            carouselContainer.addEventListener('mouseenter', stopAutoPlay);
+            carouselContainer.addEventListener('mouseleave', startAutoPlay);
+            startAutoPlay();
+        } else {
+            prevBtn.style.display = 'none';
+            nextBtn.style.display = 'none';
+        }
+
+        updateUI(); // 统一调用此函数来初始化界面
+    {% endif %}
+    </script>
+</body>
+</html>
